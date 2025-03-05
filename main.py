@@ -1,213 +1,52 @@
-import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV
-from lib.utils import *
-from sklearn.preprocessing import StandardScaler
+from lib.utils import path_gen, save_to_csv
+from lib.data_processing.parser import mat_to_csv
+from lib.data_processing.filtering import apply_fir_filter
+from lib.data_processing.transformations import slice_time_serie, raw_to_gforce, magnitude_gen
+from lib.visualization.plotter import three_axis_time_signal_plot
 
 def main():
-  # parse_data()
-  # gen_example_graphs()
-  # fir_pass()
+  
+  mat_to_csv(src_path="./data/dataset", dest_path="./data/model_data/raw", session_amount=7, measures_per_session=5)
+  
+  flag = 0
 
-  window_time = 10
-  window_sample_size = window_time * 400   # sample rate: 400Hz
-  gap = 200
+  # First pipeline============================
+  for folder_index in range(1, 8):  # 1 => 7
+    for file_index in range(1, 6):  # 1 => 5
 
-  features = []
-  targets = []
+      division = "train" if folder_index < 6 else "test"
+      step_path, squat_path = path_gen(src_path="./data/model_data/raw", division=division, folder_index= folder_index, file_index=file_index)
+      step_df = pd.read_csv(step_path)
+      squat_df = pd.read_csv(squat_path)
 
-  for person in range(1, 6):
-    for session in range(1, 6):
-      df_step = pd.read_csv(f"data/model_data/g_force/train/{person}_step{session}_acc.csv")
-      df_squat = pd.read_csv(f"data/model_data/g_force/train/{person}_squat{session}_acc.csv")
+      # FIR filter
+      step_df = apply_fir_filter(400, 2, 200, step_df)
+      squat_df = apply_fir_filter(400, 2, 200, squat_df)
 
-      for i in range(0, len(df_step) - window_sample_size + 1, gap):
-        window = df_step.iloc[i : i + window_sample_size]  # sliding window
+      # Checkpoint 1 => Filtered data
+      if flag < 2:
+        save_to_csv(step_df, squat_df, "./data/model_data/raw_filtered", division, folder_index, file_index)
+        flag += 1
 
-        magnitude = window["magnitude"]
-        X = window["acc_x"]
-        Y = window["acc_y"]
-        Z = window["acc_z"]
+      # Removing first second (outliers)
+      step_df = slice_time_serie(samples=400, df=step_df)
+      squat_df = slice_time_serie(samples=400, df=squat_df)
 
-        features.append([
-          np.mean(magnitude),
-          np.std(magnitude),
-          np.min(magnitude),
-          np.max(magnitude),
-          np.median(magnitude),
-          np.percentile(magnitude, 25),
-          np.percentile(magnitude, 75),
-          np.max(magnitude) - np.min(magnitude),
-          # np.sum(magnitude**2) / len(magnitude),
-          np.mean(np.diff(magnitude)),
-          np.std(np.diff(magnitude)),
-          np.corrcoef(X, Y)[0, 1],               
-          np.corrcoef(X, Z)[0, 1],                
-          np.corrcoef(Y, Z)[0, 1] 
-        ])
+      # Converting to G force
+      step_df = raw_to_gforce(resolution=10, justified_bits=6, scale=2, df=step_df)
+      squat_df = raw_to_gforce(resolution=10, justified_bits=6, scale=2, df=squat_df)
 
-        targets.append(0)
-      
-      for i in range(0, len(df_squat) - window_sample_size + 1, gap):
-        window = df_squat.iloc[i : i + window_sample_size]  # sliding window
+      # Generating magnitude column
+      step_df = magnitude_gen(step_df)
+      step_df = magnitude_gen(step_df)
 
-        magnitude = window["magnitude"]
-        X = window["acc_x"]
-        Y = window["acc_y"]
-        Z = window["acc_z"]
-
-        features.append([
-          np.mean(magnitude),
-          np.std(magnitude),
-          np.min(magnitude),
-          np.max(magnitude),
-          np.median(magnitude),
-          np.percentile(magnitude, 25),
-          np.percentile(magnitude, 75),
-          np.max(magnitude) - np.min(magnitude),
-          # np.sum(magnitude**2) / len(magnitude),
-          np.mean(np.diff(magnitude)),
-          np.std(np.diff(magnitude)),
-          np.corrcoef(X, Y)[0, 1],               
-          np.corrcoef(X, Z)[0, 1],                
-          np.corrcoef(Y, Z)[0, 1] 
-        ])
-
-        targets.append(1)
-
-  # Filtering
-  features = np.array(features)
-  targets = np.array(targets)
-
-  mask = ~np.isnan(features).any(axis=1)
-
-  # Filtrar as linhas válidas
-  features = features[mask]
-  targets = targets[mask]
-
-  # Normalizing==========================
-  scaler = StandardScaler()
-  X_train = scaler.fit_transform(features)
-  y_train = targets
+      # Checkoint 2 => G_force data
+      save_to_csv(step_df, squat_df, "./data/model_data/g_force", division, folder_index, file_index)
 
 
-  # Definir os hiperparâmetros para busca
-  param_grid = {
-      'C': [0.01, 0.1, 1, 10, 100, 1000],  # Regularização
-      'penalty': ['l1', 'l2'],  # Penalização (L1 para LASSO, L2 para Ridge)
-      'solver': ['liblinear']  # Necessário para suportar L1 e L2
-  }
-
-  # Configurar o GridSearchCV com validação cruzada de 5 folds
-  grid_search = GridSearchCV(LogisticRegression(max_iter=5000), param_grid, n_jobs=-1)
-
-  # Treinar o modelo
-  grid_search.fit(X_train, y_train)
-
-  # Melhor combinação de hiperparâmetros
-  print("Melhores hiperparâmetros:", grid_search.best_params_)
-
-
-  #============================================================================
-  # TEST 
-  #============================================================================
-  features = []
-  targets = []
-
-  for person in range(6, 8):
-    for session in range(1, 6):
-      df_step = pd.read_csv(f"data/model_data/g_force/test/{person}_step{session}_acc.csv")
-      df_squat = pd.read_csv(f"data/model_data/g_force/test/{person}_squat{session}_acc.csv")
-
-      for i in range(0, len(df_step) - window_sample_size + 1, gap):
-        window = df_step.iloc[i : i + window_sample_size]  # sliding window
-
-        magnitude = window["magnitude"]
-        X = window["acc_x"]
-        Y = window["acc_y"]
-        Z = window["acc_z"]
-
-        features.append([
-          np.mean(magnitude),
-          np.std(magnitude),
-          np.min(magnitude),
-          np.max(magnitude),
-          np.median(magnitude),
-          np.percentile(magnitude, 25),
-          np.percentile(magnitude, 75),
-          np.max(magnitude) - np.min(magnitude),
-          # np.sum(magnitude**2) / len(magnitude),
-          np.mean(np.diff(magnitude)),
-          np.std(np.diff(magnitude)),
-          np.corrcoef(X, Y)[0, 1],               
-          np.corrcoef(X, Z)[0, 1],                
-          np.corrcoef(Y, Z)[0, 1] 
-        ])
-
-        targets.append(0)
-      
-      for i in range(0, len(df_squat) - window_sample_size + 1, gap):
-        window = df_squat.iloc[i : i + window_sample_size]  # sliding window
-
-        magnitude = window["magnitude"]
-        X = window["acc_x"]
-        Y = window["acc_y"]
-        Z = window["acc_z"]
-
-        features.append([
-          np.mean(magnitude),
-          np.std(magnitude),
-          np.min(magnitude),
-          np.max(magnitude),
-          np.median(magnitude),
-          np.percentile(magnitude, 25),
-          np.percentile(magnitude, 75),
-          np.max(magnitude) - np.min(magnitude),
-          # np.sum(magnitude**2) / len(magnitude),
-          np.mean(np.diff(magnitude)),
-          np.std(np.diff(magnitude)),
-          np.corrcoef(X, Y)[0, 1],               
-          np.corrcoef(X, Z)[0, 1],                
-          np.corrcoef(Y, Z)[0, 1] 
-        ])
-
-        targets.append(1)
-
-  # Filtering
-  features = np.array(features)
-  targets = np.array(targets)
-
-  mask = ~np.isnan(features).any(axis=1)
-
-  # Filtrar as linhas válidas
-  features = features[mask]
-  targets = targets[mask]
-
-  # Normalizing==========================
-  scaler = StandardScaler()
-  X_test = scaler.fit_transform(features)
-  y_test = targets
-
-  best_model = grid_search.best_estimator_
-  y_pred = best_model.predict(X_test)
-
-
-  # weights and bias
-  print(best_model.coef_)
-  print(best_model.intercept_)
-
-  # Avaliar o modelo
-  accuracy = accuracy_score(y_test, y_pred)
-  conf_matrix = confusion_matrix(y_test, y_pred)
-  class_report = classification_report(y_test, y_pred)
-
-  print("Acurácia:", accuracy)
-  print("Matriz de Confusão:\n", conf_matrix)
-  print("Relatório de Classificação:\n", class_report)
-
-
+  # three_axis_time_signal_plot(step_df, "Step Raw Data", "Time(s)", "Raw", "./graphs/ex1")
+  # three_axis_time_signal_plot(step_df, "Step G-Force", "Time(s)", "Acceleration(g)", "./graphs/ex2")
 
 if __name__ == '__main__':
   main()
