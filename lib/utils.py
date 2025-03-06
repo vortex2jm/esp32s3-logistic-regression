@@ -7,8 +7,8 @@ def path_gen(src_path, folder_index, file_index):
 
 
 def save_to_parquet(df_step, df_squat, dest_path, division, folder_index, file_index):
-  df_step.to_parquet(f"{dest_path}/{division}/{folder_index}_step{file_index}_acc.csv", engine="pyarrow", compression="snappy")
-  df_squat.to_parquet(f"{dest_path}/{division}/{folder_index}_squat{file_index}_acc.csv", engine="pyarrow", compression="snappy")
+  df_step.to_parquet(f"{dest_path}/{division}/{folder_index}_step{file_index}_acc.parquet", engine="pyarrow", compression="snappy")
+  df_squat.to_parquet(f"{dest_path}/{division}/{folder_index}_squat{file_index}_acc.parquet", engine="pyarrow", compression="snappy")
 
 
 def save_to_csv(df_step, df_squat, dest_path, division, folder_index, file_index):
