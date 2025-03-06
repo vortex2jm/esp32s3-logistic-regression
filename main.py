@@ -3,7 +3,7 @@ from lib.data_processing.sliding_window import extract_metrics
 from lib.data_processing.parser import load_mat_as_dataframe
 from lib.data_processing.filtering import apply_fir_filter
 
-from lib.visualization.plotter import three_axis_time_signal_plot
+from lib.visualization.plotter import three_axis_time_signal_plot, magnitude_time_signal_plot, confusion_matrix_plot
 
 from lib.utils import path_gen, save_to_csv, save_to_parquet
 
@@ -13,7 +13,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
 import pandas as pd
-
+from tqdm import tqdm
 
 def main():
 
@@ -22,8 +22,10 @@ def main():
   X_test = []
   y_test = []
 
+  print("Executing pre-processing pipeline...\n")
+
   # Pre-processing pipeline============================
-  for folder_index in range(1, 8):  # 1 => 7
+  for folder_index in tqdm(range(1, 8)):  # 1 => 7
     for file_index in range(1, 6):  # 1 => 5
 
       division = "train" if folder_index < 6 else "test"  # Train x Test division
@@ -93,20 +95,10 @@ def main():
         X_test.extend([feature_vector for feature_vector in squat_feature_matrix])
         
         y_test.extend([target for target in step_tartget_vector])
-        y_test.extend([target for target in squat_tartget_vector])
-
-  
-  # Generating graphs
-  d_raw = pd.read_parquet("data/model_data/raw/train/1_step3_acc.parquet")
-  d_filtered = pd.read_parquet("data/model_data/raw_filtered/train/1_step3_acc.parquet")
-  d_gforce = pd.read_parquet("data/model_data/g_force/train/1_step3_acc.parquet")
-  
-  three_axis_time_signal_plot(d_raw, "Squat Raw Data", "Time(s)", "Raw", "./graphs/raw")  
-  three_axis_time_signal_plot(d_filtered, "Squat Filtered Data", "Time(s)", "Raw", "./graphs/filtered")  
-  three_axis_time_signal_plot(d_gforce, "Squat Gforce Data", "Time(s)", "Acceleration(g)", "./graphs/gforce")  
-
+        y_test.extend([target for target in squat_tartget_vector]) 
 
   # Training model==============================
+  print("\nTraining classifier...\n")
   # removing NaN values
   X_train, y_train = drop_nan(X_train, y_train)
   X_test, y_test = drop_nan(X_test, y_test)
@@ -127,12 +119,12 @@ def main():
   grid_search.fit(X_train, y_train)
   print("Melhores hiperparâmetros:", grid_search.best_params_)
 
-  # # # Testing the best model
+  # Testing the best model
   best_model = grid_search.best_estimator_
   y_pred = best_model.predict(X_test)
 
   # weights and bias
-  print("Weights")
+  print("\nWeights")
   print(best_model.coef_)
   print("\nBias")
   print(best_model.intercept_)
@@ -145,6 +137,18 @@ def main():
   print("\nAcurácia:", accuracy)
   print("\nMatriz de Confusão:\n", conf_matrix)
   print("\nRelatório de Classificação:\n", class_report)
+
+  # Generating graphs
+  print("\nGenerating reports...")
+  d_raw = pd.read_parquet("data/model_data/raw/train/1_step3_acc.parquet")
+  d_filtered = pd.read_parquet("data/model_data/raw_filtered/train/1_step3_acc.parquet")
+  d_gforce = pd.read_parquet("data/model_data/g_force/train/1_step3_acc.parquet")
+  
+  three_axis_time_signal_plot(d_raw, "S1 Squat 1 - Raw Data", "Time(s)", "Raw", "./graphs/raw")  
+  three_axis_time_signal_plot(d_filtered, "Squat Filtered Data", "Time(s)", "Raw", "./graphs/filtered")  
+  three_axis_time_signal_plot(d_gforce, "Squat Gforce Data", "Time(s)", "Acceleration(g)", "./graphs/gforce") 
+  magnitude_time_signal_plot(d_gforce, "", "Time(s)", "Acceleration(g)", "./graphs/magnitude")
+  confusion_matrix_plot(conf_matrix, "./graphs/conf_matrix")
 
 
 if __name__ == '__main__':

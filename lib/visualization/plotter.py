@@ -1,5 +1,6 @@
 from scipy.fft import fft, fftfreq
 import matplotlib.pyplot as plt
+import seaborn as sns
 import pandas as pd
 import numpy as np
 
@@ -56,5 +57,15 @@ def fft_plot(df, sample_rate, axis, title, x_label, y_label, dest_path):
   plt.title(title)
   plt.legend()
   plt.grid()
+  plt.savefig(dest_path)
+  plt.clf()
+
+
+def confusion_matrix_plot(cm, dest_path):
+  plt.figure(figsize=(6, 4))
+  sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=["Classe 0", "Classe 1"], yticklabels=["Classe 0", "Classe 1"])
+  plt.xlabel("Predicted")
+  plt.ylabel("Real")
+  plt.title("Confusion Matrix")
   plt.savefig(dest_path)
   plt.clf()
