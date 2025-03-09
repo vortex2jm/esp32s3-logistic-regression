@@ -1,7 +1,7 @@
 import serial
 import threading
 
-PORT = "COM9"
+PORT = "COM4"
 BAUDRATE = 115200
 
 def serial_read(ser):
@@ -18,7 +18,7 @@ def serial_read(ser):
 def serial_write(ser):
   while True:
     inp = input()	# Type something into terminal to send features
-    features = f"{1.39},{2.40},{3.41}"
+    features = f"{1.39},{2.40},{3.41},{-1.20},{0.45},{2.71},{1.95},{-3.45},{1.00},{0.67},{1.34},{1.19},{-2.7}"
     if inp:
       try:
         ser.write(features.encode("utf-8"))
