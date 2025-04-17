@@ -117,7 +117,7 @@ def main():
 
   grid_search = GridSearchCV(LogisticRegression(max_iter=5000), param_grid, n_jobs=-1)
   grid_search.fit(X_train, y_train)
-  print("Melhores hiperparâmetros:", grid_search.best_params_)
+  print("Best Hyperparameters:", grid_search.best_params_)
 
   # Testing the best model
   best_model = grid_search.best_estimator_
@@ -134,9 +134,9 @@ def main():
   conf_matrix = confusion_matrix(y_test, y_pred)
   class_report = classification_report(y_test, y_pred)
 
-  print("\nAcurácia:", accuracy)
-  print("\nMatriz de Confusão:\n", conf_matrix)
-  print("\nRelatório de Classificação:\n", class_report)
+  print("\nAccuracy:", accuracy)
+  print("\nConfusion Matrix:\n", conf_matrix)
+  print("\nClassification Reports:\n", class_report)
 
   # Generating graphs
   print("\nGenerating reports...")
@@ -144,10 +144,10 @@ def main():
   d_filtered = pd.read_parquet("data/model_data/raw_filtered/train/1_step3_acc.parquet")
   d_gforce = pd.read_parquet("data/model_data/g_force/train/1_step3_acc.parquet")
   
-  three_axis_time_signal_plot(d_raw, "S1 Squat 1 - Raw Data", "Time(s)", "Raw", "./graphs/raw")  
-  three_axis_time_signal_plot(d_filtered, "Squat Filtered Data", "Time(s)", "Raw", "./graphs/filtered")  
-  three_axis_time_signal_plot(d_gforce, "Squat Gforce Data", "Time(s)", "Acceleration(g)", "./graphs/gforce") 
-  magnitude_time_signal_plot(d_gforce, "", "Time(s)", "Acceleration(g)", "./graphs/magnitude")
+  three_axis_time_signal_plot(d_raw, "P1 Squat 1 - Raw Data", "Time(s)", "Raw", "./graphs/raw")  
+  three_axis_time_signal_plot(d_filtered, "P1 Squat 1 - Filtered Data", "Time(s)", "Raw", "./graphs/filtered")  
+  three_axis_time_signal_plot(d_gforce, "P1 Squat 1 - GForce Data", "Time(s)", "Acceleration(g)", "./graphs/gforce") 
+  magnitude_time_signal_plot(d_gforce, "P1 Squat 1 - GForce Data", "Time(s)", "Acceleration(g)", "./graphs/magnitude")
   confusion_matrix_plot(conf_matrix, "./graphs/conf_matrix")
 
 

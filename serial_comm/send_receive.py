@@ -48,7 +48,7 @@ def serial_write(ser):
 
     try:
       time.sleep(0.5)   # Sliding window gap interval
-      print(f"\n\nFEATURES SENT: {features_vector_string}\n")
+      # print(f"\n\nFEATURES SENT: {features_vector_string}\n")
       ser.write(features_vector_string.encode("utf-8"))
       feature_index+=1
 

@@ -142,15 +142,20 @@ void predict_task(void *pvParameters)
     if(xQueueReceive(queue, &result, portMAX_DELAY)) {
       
       //debug==========================
-      printf("\nRESULT VECTOR RECEIVED\n");
-      for(int x=0; x<WEIGHTS_SIZE; x++) {
-        printf("%.2f ", result[x]);
-      }
+      // printf("\nRESULT VECTOR RECEIVED\n");
+      // for(int x=0; x<WEIGHTS_SIZE; x++) {
+      //   printf("%.2f ", result[x]);
+      // }
+      printf("Queue pop...\n");
       //==============================
 
       // logistic regressor
       prediction = predict(result);
-      printf("Prediction: %d\n", prediction);
+
+      //debug==========================
+      if(prediction == 1) printf("Prediction: SQUAT");
+      else if(prediction == 0) printf("Prediction: STEP");
+      else printf("Prediction: ERROR\n");
 
       // dealloc memory
       if(result){
@@ -205,11 +210,11 @@ void read_input_task(void *pvParameters)
 
 
       //debug==============================
-      printf("\nRESULT VECTOR SENT\n");
+      printf("\nFeatures Vector Received\n");
       for(int x=0; x<WEIGHTS_SIZE; x++) {
         printf("%.2f ", result[x]);
       }
-      printf("\n\n");
+      printf("\n\nQueue push...\n");
       //===================================
 
 
